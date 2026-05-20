@@ -1,0 +1,71 @@
+# =============================================================================
+# GitHub Actions Workflow: Scraper Diario de Lotto Activo
+# =============================================================================
+# Ejecuta el script de scraping todos los días a las 8:00 PM hora de Venezuela
+# (UTC-4), es decir, a las 00:00 UTC del día siguiente.
+#
+# También permite ejecución manual desde la pestaña "Actions" del repositorio.
+# =============================================================================
+
+name: Scraper Diario Lotto Activo
+
+on:
+  schedule:
+    # 8:00 PM Venezuela (UTC-4) = 00:00 UTC del día siguiente
+    - cron: '0 0 * * *'
+
+  # Permite ejecutar manualmente desde GitHub
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    steps:
+      # -----------------------------------------------------------------------
+      # 1. Clonar el repositorio
+      # -----------------------------------------------------------------------
+      - name: 📥 Checkout del repositorio
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # 2. Configurar Python
+      # -----------------------------------------------------------------------
+      - name: 🐍 Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # -----------------------------------------------------------------------
+      # 3. Instalar dependencias
+      # -----------------------------------------------------------------------
+      - name: 📦 Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # -----------------------------------------------------------------------
+      # 4. Crear archivo de credenciales desde el Secret
+      # -----------------------------------------------------------------------
+      - name: 🔑 Crear credenciales de Google
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+        run: |
+          echo "$GOOGLE_CREDENTIALS" > credentials.json
+
+      # -----------------------------------------------------------------------
+      # 5. Ejecutar el scraper en modo diario
+      # -----------------------------------------------------------------------
+      - name: 🚀 Ejecutar scraper diario
+        env:
+          SPREADSHEET_NAME: ${{ secrets.SPREADSHEET_NAME }}
+        run: |
+          python scraper_lotto_activo.py --modo diario
+
+      # -----------------------------------------------------------------------
+      # 6. Limpiar credenciales (seguridad)
+      # -----------------------------------------------------------------------
+      - name: 🧹 Limpiar credenciales
+        if: always()
+        run: |
+          rm -f credentials.json
